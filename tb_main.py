@@ -292,7 +292,6 @@ def down_pub_src(path):
             PUB_SRC[i] = cNum
             if (not "http://" in i) and (not "https://" in i):
                 i = "http:" + i
-                print("++++++++   " + i)
             urllib.request.urlretrieve(i, cssName)
             print("下载了%d.css" % cNum)
             cNum = cNum + 1
@@ -301,7 +300,6 @@ def down_pub_src(path):
             PUB_SRC[i] = jNum
             if (not "http://" in i) and (not "https://" in i):
                 i = "http:" + i
-                print("++++++++   " + i)
             urllib.request.urlretrieve(i, jsName)
             print("下载了%d.js " % jNum)
             jNum = jNum + 1
@@ -352,3 +350,5 @@ if __name__ == "__main__":
     else:
         LZ = False
     down_tieba(str(tieba))
+
+    
