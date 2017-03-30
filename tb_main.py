@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
+# https://github.com/veekxt/tieba_good_backup
+
 import sys
 import urllib.request
 import re
@@ -71,8 +73,6 @@ def get_list(cid, tieba):
         url = url + "&pn=%d" % i
         page = get_html(url, "utf-8")
         rel_code = tieba_list.findall(page)
-        print(page)
-        print(rel_code)
         rel_lst.extend(rel_code)
         # Todu,没有任何帖子
     # 进一步提取结果,并放入字典中
@@ -350,5 +350,3 @@ if __name__ == "__main__":
     else:
         LZ = False
     down_tieba(str(tieba))
-
-    
