@@ -9,6 +9,7 @@ import queue
 import threading
 
 import socket
+
 socket.setdefaulttimeout(20)
 
 HIQ = False
@@ -41,35 +42,37 @@ def get_html(url, code="utf-8"):
 
 def get_cid(tieba):
     '''获取精品贴分类和对应cid'''
-    url = "http://tieba.baidu.com/f/good?kw=%s" % urllib.parse.quote(tieba)
+    url = "http://tieba.baidu.com/f?kw=%s&tab=good" % urllib.parse.quote(tieba)
     page = get_html(url)
-    tmp = re.findall(r'(?<=cid=)\d+?">.+?(?=<)', page)
+    tmp = re.findall(r'(?<=cid=)\d+?.+?">.+?(?=<)', page)
     rel = []
     for i in tmp:
-        rel.append(tuple(i.split('">')))
+        rel.append(tuple(i.split('" class="j_good_tag">')))
     return rel
 
 
 def get_list(cid, tieba):
     '''从指定贴吧和分类(cid)获取帖子列表'''
     tieba_name_url = urllib.parse.quote(tieba)
-    url = "http://tieba.baidu.com/f/good?kw=%s&ie=utf-8&cid=%s" % (
+    url = "http://tieba.baidu.com/f?kw=%s&tab=good&cid=%s" % (
         tieba_name_url, cid)
     page = get_html(url, "utf-8")
     # 确定最大页数
-    max_pn = re.compile(r'(?<=pn=)\d+(?=" class="last")').findall(page)
+    max_pn = re.compile(r'(?<=pn=)\d+(?=" class="last)').findall(page)
     if len(max_pn) != 0:
         max_pn = int(max_pn[0])
     else:
         max_pn = 0
     rel_lst = []
     # 匹配区域,包含了作者,标题,帖子id
-    tieba_list = re.compile(r'<a href="/p/.+?"\stitle=".+?".+?title=".+?"')
+    tieba_list = re.compile(r'<a href="/p/.+?"\stitle=".+?".+?title=".+?"', re.DOTALL)
     for i in range(0, max_pn + 1, 50):  # i作为页数变量,实际上不是页数,而是50*(页数-1)
         print("查找分类 %s 中的第 %s 页主题" % (cid, int(i / 50 + 1)))
         url = url + "&pn=%d" % i
         page = get_html(url, "utf-8")
         rel_code = tieba_list.findall(page)
+        print(page)
+        print(rel_code)
         rel_lst.extend(rel_code)
         # Todu,没有任何帖子
     # 进一步提取结果,并放入字典中
@@ -90,14 +93,14 @@ def get_list(cid, tieba):
     return mes
 
 
-def do_page(src, page, path, pic_quality, dict_src,page_count):
+def do_page(src, page, path, pic_quality, dict_src, page_count):
     '''处理一个页面,参数分别为:资源文件url列表, 页面, 保存文件的基础路径, 图片质量
     使用一个目录图片,文件使用数字顺序命名
     任务包括:保存资源文件,替换资源和页数链接,删除垃圾信息'''
-    
+
     media_dir = path + "img/"
-    if page_count==1:
-        if not os.path.exists(media_dir):os.mkdir(media_dir)
+    if page_count == 1:
+        if not os.path.exists(media_dir): os.mkdir(media_dir)
     page = page.replace("pb_list_pager", "")  # 禁止页码奇怪的跳转
     login_remind = re.compile(
         r'(?<=</div></div></div>)<div.*?id="guide_fc".*?</div></div>')
@@ -118,7 +121,8 @@ def do_page(src, page, path, pic_quality, dict_src,page_count):
             if i in PUB_SRC:
                 jsName = "../../pub/" + str(PUB_SRC[i]) + ".js"
                 page = page.replace(i, jsName.replace(path, ""))
-        elif ('jpg' in i or 'gif' in i or 'png' in i or 'jpeg' in i) and ('http://' in i) and '/forum/pic/item/' not in i and '/tb/cms' not in i and 'taobaocdn.com' not in i:
+        elif ('jpg' in i or 'gif' in i or 'png' in i or 'jpeg' in i) and (
+                    'http://' in i) and '/forum/pic/item/' not in i and '/tb/cms' not in i and 'taobaocdn.com' not in i:
             if i not in dict_src[0]:
                 if ("sign=" in i and pic_quality == True):
                     reGq = re.compile(r'.*/')
@@ -132,7 +136,7 @@ def do_page(src, page, path, pic_quality, dict_src,page_count):
                     urllib.request.urlretrieve(imggq, imgName)
                 except:
                     print("一个图片错误，记录在last.log")
-                    f_log.write("下载错误："+imggq+'\n')
+                    f_log.write("下载错误：" + imggq + '\n')
                 dict_src[0][i] = imgName
                 dict_src[1] = dict_src[1] + 1
             else:
@@ -141,10 +145,12 @@ def do_page(src, page, path, pic_quality, dict_src,page_count):
     saveStr(page, path + "pn_%d.html" % page_count)
     return page
 
+
 def down_from_queue(q):
     while not q.empty():
         i = q.get()
         do_page(*i)
+
 
 def down_one_tz(tb_code, mydir, only_lz=False, pic_quality=True):
     '''下载一整个帖子,参数:贴子号码, 根目录, 是否只看楼主, 是否使用高质量图片
@@ -160,7 +166,7 @@ def down_one_tz(tb_code, mydir, only_lz=False, pic_quality=True):
         page_code = re.compile(r'(?<=<span class="red">)\d*?(?=</span>)')
         page_sum = int(page_code.search(main_page).group())
     except:
-        if(only_lz == False):
+        if (only_lz == False):
             return
         else:
             pass
@@ -178,13 +184,13 @@ def down_one_tz(tb_code, mydir, only_lz=False, pic_quality=True):
         tb_media = re.compile(
             r'(?<=src=").*?(?=")|(?<=href=").*?(?=")|(?<=data-tb-lazyload=").*?(?=")')
         rel = tb_media.findall(main_page)
-        epage.put((rel, main_page, root_dir, pic_quality, dict_src,page_count))
+        epage.put((rel, main_page, root_dir, pic_quality, dict_src, page_count))
         print("==%s 的第 %d 页,共 %d 页==" % (tb_code, page_count, page_sum))
     for i in range(10):
         tmp = threading.Thread(target=down_from_queue, args=(epage,))
         tmp.start()
-    
-        
+
+
 def make_main_index(cids, tieba, has0):
     '''制作主索引文件'''
     mydir = tieba + "_精品/"
@@ -255,7 +261,7 @@ def make_down_list(tieba):
     ilist = []
     for i in range(len(cid_s_new)):
         cid = cid_s_new[i][0]
-        print("整理分类: %s#" % cid_s_new[i][0])
+        print("整理分类: #%s" % cid_s_new[i][0])
         a_cid_list = get_list(cid, tieba)
         make_cid_index(cid, a_cid_list, tieba)  # 制作索引文件
         for i in a_cid_list:
@@ -284,16 +290,22 @@ def down_pub_src(path):
         if ".css" in i:
             cssName = path + str(cNum) + ".css"
             PUB_SRC[i] = cNum
+            if (not "http://" in i) and (not "https://" in i):
+                i = "http:" + i
+                print("++++++++   " + i)
             urllib.request.urlretrieve(i, cssName)
             print("下载了%d.css" % cNum)
             cNum = cNum + 1
         elif ".js" in i:
             jsName = path + str(jNum) + ".js"
             PUB_SRC[i] = jNum
+            if (not "http://" in i) and (not "https://" in i):
+                i = "http:" + i
+                print("++++++++   " + i)
             urllib.request.urlretrieve(i, jsName)
-            print("下载了%d.js" % jNum)
+            print("下载了%d.js " % jNum)
             jNum = jNum + 1
-            
+
 
 def down_from_queue_tz(q, tieba):
     while not q.empty():
@@ -301,6 +313,7 @@ def down_from_queue_tz(q, tieba):
         tb_code = i[1]
         mydir = tieba + "_精品/%s/" % i[0]
         down_one_tz(tb_code, mydir, LZ, HIQ)
+
 
 def down_tieba(tieba):
     down_list = make_down_list(tieba)
