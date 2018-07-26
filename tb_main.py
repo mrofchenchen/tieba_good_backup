@@ -67,7 +67,7 @@ def get_list(cid, tieba):
         max_pn = 0
     rel_lst = []
     # 匹配区域,包含了作者,标题,帖子id
-    tieba_list = re.compile(r'<a href="/p/.+?"\stitle=".+?".+?title=".+?"', re.DOTALL)
+    tieba_list = re.compile(r'<a.*?href="/p/.+?"\stitle=".+?"[\s\S]+?title=".+?"', re.DOTALL)
     for i in range(0, max_pn + 1, 50):  # i作为页数变量,实际上不是页数,而是50*(页数-1)
         print("查找分类 %s 中的第 %s 页主题" % (cid, int(i / 50 + 1)))
         url = url + "&pn=%d" % i
@@ -76,7 +76,7 @@ def get_list(cid, tieba):
         rel_lst.extend(rel_code)
         # Todu,没有任何帖子
     # 进一步提取结果,并放入字典中
-    re_id_tmp = re.compile(r'(?<=<a href="/p/)\d+?(?=(\?fr=good"|"))')
+    re_id_tmp = re.compile(r'(?<= href="/p/)\d+?(?=(\?fr=good"|"))')
     re_title_tmp = re.compile(r'(?<=title=").+?(?=" t)')
     re_autor_tmp = re.compile(
         r'(?<=title="主题作者:\s).+?(?=")|(?<=title=")吧刊(?=")')
@@ -280,7 +280,8 @@ def make_down_list(tieba):
 
 
 def down_pub_src(path):
-    page = get_html("http://tieba.baidu.com/p/4087941653")
+    # 使用任意一个可用的帖子即可
+    page = get_html("http://tieba.baidu.com/p/4826111191")
     tb_media = re.compile(
         r'(?<=src=").*?(?=")|(?<=href=").*?(?=")|(?<=data-tb-lazyload=").*?(?=")')
     src_l = tb_media.findall(page)
