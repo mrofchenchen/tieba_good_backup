@@ -15,7 +15,7 @@ import socket
 socket.setdefaulttimeout(20)
 
 HIQ = False
-LZ = True
+LZ = False
 
 f_log = open("last.log", "w", encoding="utf-8")
 
@@ -32,14 +32,18 @@ def saveStr(mystr, myfile):
 
 def get_html(url, code="utf-8"):
     '''获取请求url的返回页面,默认utf-8解码'''
-    for i in range(3):
-        try:
-            page = urllib.request.urlopen(url, timeout=10)
-            break
-        except Exception as e:
-            print("%s连接出错:" + str(e) % url)
-    html = page.read().decode(code, errors='ignore')
-    return html
+    try:
+        page = urllib.request.urlopen(url, timeout=20)
+    except Exception as e:
+        print("%s => 连接出错: " % url + str(e))
+        return None
+    try:
+        html = page.read().decode(code, errors='ignore')
+        return html
+    except Exception as e:
+        print("%s => 连接出错: " % url + str(e))
+    return None
+
 
 
 def get_cid(tieba):
@@ -67,7 +71,8 @@ def get_list(cid, tieba):
         max_pn = 0
     rel_lst = []
     # 匹配区域,包含了作者,标题,帖子id
-    tieba_list = re.compile(r'<a.*?href="/p/.+?"\stitle=".+?"[\s\S]+?title=".+?"', re.DOTALL)
+    tieba_list = re.compile(r'<a rel="noreferrer" href="/p/.+?"\stitle=".+?"[\s\S]+?title=".+?"', re.DOTALL)
+
     for i in range(0, max_pn + 1, 50):  # i作为页数变量,实际上不是页数,而是50*(页数-1)
         print("查找分类 %s 中的第 %s 页主题" % (cid, int(i / 50 + 1)))
         url = url + "&pn=%d" % i
@@ -121,7 +126,7 @@ def do_page(src, page, path, pic_quality, dict_src, page_count):
             if i in PUB_SRC:
                 jsName = "../../pub/" + str(PUB_SRC[i]) + ".js"
                 page = page.replace(i, jsName.replace(path, ""))
-        elif ('jpg' in i or 'gif' in i or 'png' in i or 'jpeg' in i) and (
+        elif ('jpg' in i or 'gif' in i or 'png' in i or 'jpeg' in i or 'tb.himg.baidu.com' in i) and (
                     'http://' in i) and '/forum/pic/item/' not in i and '/tb/cms' not in i and 'taobaocdn.com' not in i:
             if i not in dict_src[0]:
                 if ("sign=" in i and pic_quality == True):
@@ -181,6 +186,11 @@ def down_one_tz(tb_code, mydir, only_lz=False, pic_quality=True):
     for page_count in range(1, 1 + page_sum):
         url = base_url + str(page_count)
         main_page = get_html(url)
+        if main_page is None:
+            main_page = get_html(url)
+        if main_page is None:
+            f_log.write("一个链接超时：" + url + '\n')
+            return
         tb_media = re.compile(
             r'(?<=src=").*?(?=")|(?<=href=").*?(?=")|(?<=data-tb-lazyload=").*?(?=")')
         rel = tb_media.findall(main_page)
@@ -281,7 +291,11 @@ def make_down_list(tieba):
 
 def down_pub_src(path):
     # 使用任意一个可用的帖子即可
-    page = get_html("http://tieba.baidu.com/p/4826111191")
+    page = get_html("https://tieba.baidu.com/p/1504639788")
+    if page is None:
+        page = get_html("https://tieba.baidu.com/p/3132122178")
+    if page is None:
+        page = get_html("https://tieba.baidu.com/p/5134862259")
     tb_media = re.compile(
         r'(?<=src=").*?(?=")|(?<=href=").*?(?=")|(?<=data-tb-lazyload=").*?(?=")')
     src_l = tb_media.findall(page)
@@ -337,9 +351,8 @@ def down_tieba(tieba):
         ls_xc.append(tmp)
     print("创建完成")
 
-
-if __name__ == "__main__":
-    tieba = input("贴吧名称:（不要带最后的”吧“字）:")
+def start_down():
+    tieba = input("贴吧名称:（不要带最后的“吧”字）:")
     hi = input("是否使用高质量图片 y/n ")
     lz = input("是否只看楼主 y/n ")
     if hi == 'y' or hi == 'Y':
@@ -351,3 +364,6 @@ if __name__ == "__main__":
     else:
         LZ = False
     down_tieba(str(tieba))
+
+if __name__ == "__main__":
+    start_down()
